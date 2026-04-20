@@ -1,3 +1,4 @@
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useState, useCallback, useRef } from "react";
 import { View, ScrollView, TouchableOpacity, Animated } from "react-native";
 import { Text } from "react-native-paper";
@@ -6,7 +7,6 @@ import { supabase } from "@/lib/supabase";
 import { useFocusEffect, router } from "expo-router";
 import { useTheme } from "@/context/themecontext";
 import Svg, { Path, G, Text as SvgText } from "react-native-svg";
-import { SafeAreaView } from "react-native-safe-area-context";
 
 type Trade = {
   id: number;
@@ -62,7 +62,7 @@ function PieChart({
   const lossMid = midPoint(winEnd, 360);
 
   return (
-    <SafeAreaView style={{ alignItems: "center", marginVertical: 12 }}>
+    <View style={{ alignItems: "center", marginVertical: 12 }}>
       <Svg width={size} height={size}>
         {winRate === 0 ? (
           <Path d={slicePath(0, 359.99)} fill={negColor} />
@@ -100,7 +100,7 @@ function PieChart({
           </G>
         )}
       </Svg>
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -570,6 +570,163 @@ export default function AnalyticsScreen() {
               </View>
             ))}
           </View>
+        </View>
+
+        {/* Yearly Statistics Bar Chart */}
+        <View
+          style={{
+            backgroundColor: T.card,
+            marginHorizontal: 16,
+            marginBottom: 12,
+            borderRadius: 16,
+            padding: 20,
+          }}
+        >
+          <Text
+            style={{
+              color: T.text,
+              fontSize: 18,
+              fontWeight: "bold",
+              marginBottom: 4,
+            }}
+          >
+            Yearly Statistics
+          </Text>
+          <Text style={{ color: T.subtext, fontSize: 12, marginBottom: 16 }}>
+            {new Date().getFullYear()} — Monthly PnL ($)
+          </Text>
+
+          {/* Legend */}
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 8,
+              marginBottom: 16,
+            }}
+          >
+            <View
+              style={{
+                width: 12,
+                height: 12,
+                borderRadius: 3,
+                backgroundColor: T.accent,
+              }}
+            />
+            <Text style={{ color: T.subtext, fontSize: 12 }}>
+              Monthly PNL ($)
+            </Text>
+          </View>
+
+          {/* Bar Chart */}
+          {(() => {
+            const now = new Date();
+            const currentYear = now.getFullYear();
+            const months = [
+              "Jan",
+              "Feb",
+              "Mar",
+              "Apr",
+              "May",
+              "Jun",
+              "Jul",
+              "Aug",
+              "Sep",
+              "Oct",
+              "Nov",
+              "Dec",
+            ];
+
+            // Hitung PnL per bulan tahun ini
+            const monthlyData = months.map((label, i) => {
+              const monthStr = `${currentYear}-${String(i + 1).padStart(2, "0")}`;
+              const monthTrades = trades.filter((t) =>
+                t.tanggal.startsWith(monthStr),
+              );
+              const pnl = monthTrades.reduce(
+                (s, t) => s + (t.type === "profit" ? t.amount : -t.amount),
+                0,
+              );
+              return { label, pnl };
+            });
+
+            const maxVal = Math.max(
+              ...monthlyData.map((d) => Math.abs(d.pnl)),
+              1,
+            );
+            const BAR_MAX_H = 120;
+
+            return (
+              <View>
+                {/* Y axis labels + bars */}
+                <View
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "flex-end",
+                    gap: 4,
+                  }}
+                >
+                  {/* Y labels */}
+                  <View
+                    style={{
+                      height: BAR_MAX_H + 20,
+                      justifyContent: "space-between",
+                      alignItems: "flex-end",
+                      marginRight: 4,
+                    }}
+                  >
+                    {[
+                      maxVal,
+                      maxVal * 0.75,
+                      maxVal * 0.5,
+                      maxVal * 0.25,
+                      0,
+                    ].map((v, i) => (
+                      <Text key={i} style={{ color: T.subtext, fontSize: 9 }}>
+                        ${v.toFixed(0)}
+                      </Text>
+                    ))}
+                  </View>
+                  {/* Bars */}
+                  {monthlyData.map((d, i) => {
+                    const barH =
+                      maxVal > 0 ? Math.abs(d.pnl / maxVal) * BAR_MAX_H : 0;
+                    const isPositive = d.pnl >= 0;
+                    return (
+                      <View key={i} style={{ flex: 1, alignItems: "center" }}>
+                        <View
+                          style={{
+                            height: BAR_MAX_H,
+                            justifyContent: "flex-end",
+                          }}
+                        >
+                          <View
+                            style={{
+                              height: Math.max(barH, d.pnl !== 0 ? 3 : 0),
+                              backgroundColor: isPositive
+                                ? T.accent
+                                : T.negative,
+                              borderRadius: 4,
+                              minWidth: 6,
+                            }}
+                          />
+                        </View>
+                        <Text
+                          style={{
+                            color: T.subtext,
+                            fontSize: 8,
+                            marginTop: 4,
+                          }}
+                        >
+                          {d.label}
+                        </Text>
+                      </View>
+                    );
+                  })}
+                </View>
+              </View>
+            );
+          })()}
         </View>
 
         <View style={{ height: 100 }} />
